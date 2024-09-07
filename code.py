@@ -14,10 +14,26 @@ from adafruit_display_shapes.triangle import Triangle
 gc.enable()
 
 # Your personal info
+# Find an icon you like here: 
+# https://github.com/olikraus/u8g2/wiki/fntgrpstreamline#streamline_all
+# Or comment out the fonticon line to choose a random icon
 username = "Sean Carolan"
 jobtitle = "Sales Engineer"
+#fonticon = "\u0232"
 
 # Functions
+def choose_icon():
+    start_hex = 0x0030
+    end_hex = 0x02BF
+
+    # Check if fonticon is defined and not commented out
+    try:
+        if fonticon:  # if fonticon is defined, use it
+            return fonticon
+    except NameError:
+        # fonticon is not defined, choose a random icon
+        return chr(random.randint(start_hex, end_hex))
+
 def get_dadjoke():
     """Returns a random Dad Joke from the file named dadjokes
     on main storage in classic Dad Joke question-answer format."""
@@ -75,8 +91,10 @@ def create_button_labels(display_group):
     display_group.append(c_group)
 
 def clear_ui(display_group):
+    global badge_mode_active
     try:
         display_group.remove(badge_group)
+        badge_mode_active = False  # Reset when the UI is cleared
     except:
         print("Badge group not attached.")
     dadjoke_q_area.text = ''
@@ -85,12 +103,20 @@ def clear_ui(display_group):
     name_area.text = ''
     title_area.text = ''
 
+# Track the current mode
+badge_mode_active = False
+
 def show_badge_mode(display_group):
+    global badge_mode_active
+    if badge_mode_active:
+        print("Already in badge mode, skipping update.")
+        return
     try:
         display_group.append(badge_group)
-        name_area.text=username
-        title_area.text=jobtitle
+        name_area.text = username
+        title_area.text = jobtitle
         display.show(display_group)
+        badge_mode_active = True  # Set to True once we switch to badge mode
     except Exception as e:
         print('Oops something went wrong.')
         print(e)
@@ -195,21 +221,21 @@ create_button_labels(g)
 # Badge UI
 grafana = displayio.OnDiskBitmap("/grafana.bmp")
 grafana_clear = displayio.Bitmap(100, 75, 2)
-instruqt = displayio.OnDiskBitmap("/instruqt.bmp")
-instruqt_clear = displayio.Bitmap(200, 53, 2)
+glabs = displayio.OnDiskBitmap("/glabs.bmp")
+glabs_clear = displayio.Bitmap(200, 53, 2)
 grafana_grid = displayio.TileGrid(grafana, pixel_shader=grafana.pixel_shader, x=0, y=0)
-instruqt_grid = displayio.TileGrid(instruqt, pixel_shader=instruqt.pixel_shader, x=85, y=0)
-name_group = displayio.Group(scale=1, x=85, y=62)
+glabs_grid = displayio.TileGrid(glabs, pixel_shader=glabs.pixel_shader, x=85, y=0)
+name_group = displayio.Group(scale=1, x=80, y=58)
 name_area = label.Label(lucida_large, text=username, color=BLACK)
 name_group.append(name_area)
-title_group = displayio.Group(scale=1, x=92, y=85)
+title_group = displayio.Group(scale=1, x=87, y=81)
 title_area = label.Label(lucida_italic, text=jobtitle, color=BLACK)
 title_group.append(title_area)
 icon_group = displayio.Group(scale=2, x=254, y=100)
-icon_area = label.Label(streamline, text="\u00fa", color=BLACK)
+icon_area = label.Label(streamline, text=choose_icon(), color=BLACK)
 icon_group.append(icon_area)
 badge_group = displayio.Group()
-badge_group.append(instruqt_grid)
+badge_group.append(glabs_grid)
 badge_group.append(grafana_grid)
 badge_group.append(name_group)
 badge_group.append(title_group)
@@ -239,11 +265,14 @@ display.show(g)
 time.sleep(2)
 display.refresh()
 
+print("Setup complete, entering loop.")
+
 start = time.monotonic()
 while True:
     button_a.update()
     button_b.update()
     button_c.update()
+    #This is reserved for wake from sleep
     #button_up.update()
     button_down.update()
     now = time.monotonic()
