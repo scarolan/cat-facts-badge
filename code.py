@@ -63,11 +63,11 @@ def get_catfact():
 def create_button_labels(display_group):
     """Creates rounded labels above each button."""
     # Button labels
-    a_rect = RoundRect(21, 111, 38, 17, 5, fill=BLACK, outline=WHITE, stroke=1)
+    a_rect = RoundRect(2, 111, 75, 17, 5, fill=BLACK, outline=WHITE, stroke=1)
     display_group.append(a_rect)
 
-    button_a_text = 'Badge'
-    a_group = displayio.Group(scale=1, x=26, y=119)
+    button_a_text = 'Emoji Party'
+    a_group = displayio.Group(scale=1, x=8, y=119)
     a_area = label.Label(terminalio.FONT, text=button_a_text, color=WHITE)
     a_group.append(a_area)
     display_group.append(a_group)
@@ -148,6 +148,34 @@ def show_catfact_mode(display_group):
         display.show(display_group)
     except Exception as e:
         print('Oops something went wrong.')
+        print(e)
+    try:
+        display.refresh()
+    except Exception as e:
+        print('Too soon, please try again.')
+        print(e)
+
+def get_random_emojis():
+    """Generates a string of 14 random emoji characters with a line break after the 7th character."""
+    start_hex = 0x0030
+    end_hex = 0x02BF
+    emoji_list = [chr(random.randint(start_hex, end_hex)) for _ in range(14)]
+    
+    # Insert a line break after 7 emojis
+    emoji_string = ''.join(emoji_list[:7]) + '\n' + ''.join(emoji_list[7:])
+    
+    return emoji_string
+
+def show_emoji_party(display_group):
+    try:
+        # Get 8 random emoji characters
+        emoji_string = get_random_emojis()
+        
+        # Update the emoji area with the generated string
+        emoji_area.text = emoji_string
+        display.show(display_group)
+    except Exception as e:
+        print('Oops, something went wrong.')
         print(e)
     try:
         display.refresh()
@@ -254,10 +282,16 @@ dadjoke_a_area = label.Label(lucida_italic, text=" "*93, color=BLACK, padding_to
 dadjoke_q_group.append(dadjoke_q_area)
 dadjoke_a_group.append(dadjoke_a_area)
 
+# Emoji Party UI
+emoji_group = displayio.Group(scale=2, x=0, y=50)
+emoji_area = label.Label(streamline, text=" "*14, color=BLACK, line_spacing=1.5)
+emoji_group.append(emoji_area)
+
 # Append all the groups
 g.append(dadjoke_q_group)
 g.append(dadjoke_a_group)
 g.append(catfact_group)
+g.append(emoji_group)
 g.append(badge_group)
 
 # Initial display - starts with badge since other labels are empty
@@ -276,17 +310,17 @@ while True:
     #button_up.update()
     button_down.update()
     now = time.monotonic()
-    if now - start >= 30:
+    if now - start >= 120:
         print("Returning to badge mode and sleeping.")
         clear_ui(g)
         show_badge_mode(g)
         pin_alarm = alarm.pin.PinAlarm(pin=board.SW_UP, value=True, pull=True)
         alarm.exit_and_deep_sleep_until_alarms(pin_alarm)
     if button_a.fell:
-        print('Activating badge mode...')
+        print('Activating emoji party...')
         start = time.monotonic()
         clear_ui(g)
-        show_badge_mode(g)
+        show_emoji_party(g)
     if button_b.fell:
         print('Activating dadjoke mode...')
         start = time.monotonic()
