@@ -3,12 +3,7 @@ import gc, displayio, terminalio, board, time, digitalio, alarm, random
 from adafruit_bitmap_font import bitmap_font
 from adafruit_display_text import label, wrap_text_to_lines
 from adafruit_debouncer import Debouncer
-from adafruit_display_shapes.circle import Circle
-from adafruit_display_shapes.line import Line
-from adafruit_display_shapes.polygon import Polygon
-from adafruit_display_shapes.rect import Rect
 from adafruit_display_shapes.roundrect import RoundRect
-from adafruit_display_shapes.triangle import Triangle
 
 # Enable the trash collector
 gc.enable()
@@ -46,7 +41,6 @@ def get_dadjoke():
     print(q)
     print(a)
     jokes = []
-    print(gc.mem_free())
     return(q, a)
 
 def get_catfact():
@@ -57,7 +51,6 @@ def get_catfact():
     fact = "\n".join(wrap_text_to_lines(fact,30))
     print(fact)
     catfacts = []
-    print(gc.mem_free())
     return(fact)
 
 def create_button_labels(display_group):
@@ -97,11 +90,32 @@ def clear_ui(display_group):
         badge_mode_active = False  # Reset when the UI is cleared
     except:
         print("Badge group not attached.")
+    try:
+        display_group.remove(emoji_group)
+        print("Emoji group removed.")
+    except:
+        print("Emoji group not attached.")
+    try:
+        display_group.remove(dadjoke_q_group)
+        display_group.remove(dadjoke_a_group)
+        print("Dadjoke groups removed.")
+    except:
+        print("Dadjoke groups not attached.")
+    try:
+        display_group.remove(catfact_group)
+        print("Catfact group removed.")
+    except:
+        print("Catfact group not attached.")
     dadjoke_q_area.text = ''
     dadjoke_a_area.text = ''
     catfact_area.text = ''
     name_area.text = ''
     title_area.text = ''
+    emoji_area.text = ''
+
+    # Force garbage collection to free memory
+    gc.collect()
+    print(gc.mem_free())  # Print free memory for debugging
 
 # Track the current mode
 badge_mode_active = False
@@ -128,6 +142,8 @@ def show_badge_mode(display_group):
 
 def show_dadjoke_mode(display_group):
     try:
+        display_group.append(dadjoke_q_group)
+        display_group.append(dadjoke_a_group)
         j = get_dadjoke()
         dadjoke_q_area.text = j[0]
         dadjoke_a_area.text = j[1]
@@ -143,6 +159,7 @@ def show_dadjoke_mode(display_group):
 
 def show_catfact_mode(display_group):
     try:
+        display_group.append(catfact_group)
         c = get_catfact()
         catfact_area.text = c
         display.show(display_group)
@@ -164,10 +181,15 @@ def get_random_emojis():
     # Insert a line break after 7 emojis
     emoji_string = ''.join(emoji_list[:7]) + '\n' + ''.join(emoji_list[7:])
     
+    # Force garbage collection after emoji generation
+    del emoji_list  # Free up the list object
+    gc.collect()
+    
     return emoji_string
 
 def show_emoji_party(display_group):
     try:
+        display_group.append(emoji_group)
         # Get 8 random emoji characters
         emoji_string = get_random_emojis()
         
@@ -211,7 +233,7 @@ emoticons and other icons. Emoticons is a smaller set of smileys.
 Find more bdf fonts here: https://github.com/olikraus/u8g2/
 """
 streamline = bitmap_font.load_font("streamline_all.bdf")
-emoticons = bitmap_font.load_font("emoticons.bdf")
+#emoticons = bitmap_font.load_font("emoticons.bdf")
 lucida_italic = bitmap_font.load_font("luIS14.bdf")
 lucida_regular = bitmap_font.load_font("luRS14.bdf")
 lucida_large = bitmap_font.load_font("luRS19.bdf")
@@ -287,11 +309,9 @@ emoji_group = displayio.Group(scale=2, x=0, y=50)
 emoji_area = label.Label(streamline, text=" "*14, color=BLACK, line_spacing=1.5)
 emoji_group.append(emoji_area)
 
-# Append all the groups
-g.append(dadjoke_q_group)
-g.append(dadjoke_a_group)
-g.append(catfact_group)
-g.append(emoji_group)
+# Only append the badge group
+# We are tight on memory so these groups must be appended
+# and removed on every refresh.
 g.append(badge_group)
 
 # Initial display - starts with badge since other labels are empty
@@ -331,3 +351,8 @@ while True:
         start = time.monotonic()
         clear_ui(g)
         show_catfact_mode(g)
+    if button_down.fell:
+        print('Returning to badge mode')
+        start = time.monotonic()
+        clear_ui(g)
+        show_badge_mode(g)
