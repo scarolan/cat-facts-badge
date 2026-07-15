@@ -9,26 +9,10 @@ from adafruit_display_shapes.roundrect import RoundRect
 gc.enable()
 
 # Your personal info
-# Find an icon you like here: 
-# https://github.com/olikraus/u8g2/wiki/fntgrpstreamline#streamline_all
-# Or comment out the fonticon line to choose a random icon
 username = "Sean Carolan"
 jobtitle = "Sales Engineer"
-#fonticon = "\u0232"
 
 # Functions
-def choose_icon():
-    start_hex = 0x0030
-    end_hex = 0x02BF
-
-    # Check if fonticon is defined and not commented out
-    try:
-        if fonticon:  # if fonticon is defined, use it
-            return fonticon
-    except NameError:
-        # fonticon is not defined, choose a random icon
-        return chr(random.randint(start_hex, end_hex))
-
 def get_dadjoke():
     """Returns a random Dad Joke from the file named dadjokes
     on main storage in classic Dad Joke question-answer format."""
@@ -129,7 +113,7 @@ def show_badge_mode(display_group):
         display_group.append(badge_group)
         name_area.text = username
         title_area.text = jobtitle
-        display.show(display_group)
+        display.root_group = display_group
         badge_mode_active = True  # Set to True once we switch to badge mode
     except Exception as e:
         print('Oops something went wrong.')
@@ -147,7 +131,7 @@ def show_dadjoke_mode(display_group):
         j = get_dadjoke()
         dadjoke_q_area.text = j[0]
         dadjoke_a_area.text = j[1]
-        display.show(display_group)
+        display.root_group = display_group
     except Exception as e:
         print('Oops something went wrong.')
         print(e)
@@ -162,7 +146,7 @@ def show_catfact_mode(display_group):
         display_group.append(catfact_group)
         c = get_catfact()
         catfact_area.text = c
-        display.show(display_group)
+        display.root_group = display_group
     except Exception as e:
         print('Oops something went wrong.')
         print(e)
@@ -195,7 +179,7 @@ def show_emoji_party(display_group):
         
         # Update the emoji area with the generated string
         emoji_area.text = emoji_string
-        display.show(display_group)
+        display.root_group = display_group
     except Exception as e:
         print('Oops, something went wrong.')
         print(e)
@@ -268,28 +252,28 @@ button_down = Debouncer(pin_down)
 # Creates the button labels
 create_button_labels(g)
 
-# Badge UI
-grafana = displayio.OnDiskBitmap("/grafana.bmp")
-grafana_clear = displayio.Bitmap(100, 75, 2)
-glabs = displayio.OnDiskBitmap("/glabs.bmp")
-glabs_clear = displayio.Bitmap(200, 53, 2)
-grafana_grid = displayio.TileGrid(grafana, pixel_shader=grafana.pixel_shader, x=0, y=0)
-glabs_grid = displayio.TileGrid(glabs, pixel_shader=glabs.pixel_shader, x=85, y=0)
-name_group = displayio.Group(scale=1, x=80, y=58)
+# Badge UI - Harness branding
+# harness_mark.bmp is the logo mark (82x82), harness.bmp the wordmark (141x30),
+# canary.bmp the little bird (46x46). All are pre-rendered 1-bit BMPs so we don't
+# have to load another font into RAM.
+mark = displayio.OnDiskBitmap("/harness_mark.bmp")
+wordmark = displayio.OnDiskBitmap("/harness.bmp")
+canary = displayio.OnDiskBitmap("/canary.bmp")
+mark_grid = displayio.TileGrid(mark, pixel_shader=mark.pixel_shader, x=3, y=7)
+wordmark_grid = displayio.TileGrid(wordmark, pixel_shader=wordmark.pixel_shader, x=96, y=8)
+canary_grid = displayio.TileGrid(canary, pixel_shader=canary.pixel_shader, x=250, y=0)
+name_group = displayio.Group(scale=1, x=96, y=58)
 name_area = label.Label(lucida_large, text=username, color=BLACK)
 name_group.append(name_area)
-title_group = displayio.Group(scale=1, x=87, y=81)
+title_group = displayio.Group(scale=1, x=99, y=81)
 title_area = label.Label(lucida_italic, text=jobtitle, color=BLACK)
 title_group.append(title_area)
-icon_group = displayio.Group(scale=2, x=254, y=100)
-icon_area = label.Label(streamline, text=choose_icon(), color=BLACK)
-icon_group.append(icon_area)
 badge_group = displayio.Group()
-badge_group.append(glabs_grid)
-badge_group.append(grafana_grid)
+badge_group.append(wordmark_grid)
+badge_group.append(mark_grid)
+badge_group.append(canary_grid)
 badge_group.append(name_group)
 badge_group.append(title_group)
-badge_group.append(icon_group)
 
 # Catfact UI
 catfact_group = displayio.Group(scale=1, x=0, y=8)
@@ -315,9 +299,18 @@ emoji_group.append(emoji_area)
 g.append(badge_group)
 
 # Initial display - starts with badge since other labels are empty
-display.show(g)
+display.root_group = g
 time.sleep(2)
-display.refresh()
+# On CircuitPython 9+, e-paper refresh() raises RuntimeError if called before the
+# panel's minimum refresh interval has elapsed (CP8 used to just return False). A
+# quick reset can land us here too soon, so retry instead of crashing at startup.
+while True:
+    try:
+        display.refresh()
+        break
+    except RuntimeError:
+        print('Too soon to refresh, waiting...')
+        time.sleep(display.time_to_refresh or 1)
 
 print("Setup complete, entering loop.")
 
